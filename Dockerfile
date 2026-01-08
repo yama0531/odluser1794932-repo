@@ -1,33 +1,23 @@
-# Use the official Alpine image as a base
-FROM node:20-alpine
+# 明示的にEOLかつ脆弱なベースイメージ
+FROM node:12-alpine
 
-# Set the working directory in the container
-WORKDIR /usr/src/app
+# root ユーザーのまま実行（Bad Practice）
+USER root
 
-# Copy package.json and package-lock.json
-COPY package*.json ./
+# 脆弱な OS パッケージを固定インストール
+RUN apk add --no-cache \
+    bash \
+    openssl=1.1.1k-r0 \
+    curl
 
-# Install dependencies
-RUN npm install
+# アプリ配置
+WORKDIR /app
+COPY . /app
 
-# Copy the rest of the application code
-COPY . .
+# 脆弱な npm パッケージをインストール
+RUN npm install minimist@0.0.8 lodash@4.17.11
 
-# Create a non-root user and group
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-
-# Change ownership of the application directory
-RUN chown -R appuser:appgroup /usr/src/app
-
-# Switch to the non-root user
-USER appuser
-
-# Expose the port the app runs on
+# 不要に広いポート公開
 EXPOSE 3000
 
-# Add health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3000/ || exit 1
-
-# Define the command to run the app
 CMD ["node", "app.js"]
